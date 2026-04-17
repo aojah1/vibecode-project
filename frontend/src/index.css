@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-oracle-gray font-oracle text-oracle-text antialiased;
+  }
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-oracle-red hover:bg-oracle-redDark text-white font-semibold py-3 px-6 rounded-lg
+           transition-colors duration-150 active:scale-95 touch-manipulation;
+  }
+  .btn-secondary {
+    @apply bg-white hover:bg-oracle-gray text-oracle-navy font-semibold py-3 px-6 rounded-lg
+           border border-oracle-border transition-colors duration-150 active:scale-95;
+  }
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-oracle-border p-4;
+  }
+  .input {
+    @apply w-full border border-oracle-border rounded-lg px-4 py-3 text-base
+           focus:outline-none focus:ring-2 focus:ring-oracle-red focus:border-transparent
+           bg-white text-oracle-text;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full;
+  }
+}
