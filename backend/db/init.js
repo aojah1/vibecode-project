@@ -47,6 +47,13 @@ const DDL = [
     CREATED_AT  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT UQ_USER_QUESTION_LIKE UNIQUE (USER_ID, QUESTION_ID)
   )`,
+  `CREATE TABLE ${S}.SKO_GROUP_ANSWERS (
+    GROUP_ID    NUMBER NOT NULL PRIMARY KEY REFERENCES ${S}.SKO_QUESTION_GROUPS(GROUP_ID),
+    ANSWER_TEXT VARCHAR2(4000) NOT NULL,
+    ANSWERED_BY VARCHAR2(255),
+    ANSWERED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UPDATED_AT  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`,
 ];
 
 async function grantQuota() {
@@ -94,7 +101,7 @@ export async function initSchema() {
   await grantQuota();
 
   const seqNames = ['SKO_USERS_SEQ', 'SKO_GROUPS_SEQ', 'SKO_QUESTIONS_SEQ', 'SKO_LIKES_SEQ'];
-  const tableNames = ['SKO_USERS', 'SKO_QUESTION_GROUPS', 'SKO_QUESTIONS', 'SKO_LIKES'];
+  const tableNames = ['SKO_USERS', 'SKO_QUESTION_GROUPS', 'SKO_QUESTIONS', 'SKO_LIKES', 'SKO_GROUP_ANSWERS'];
 
   // Create sequences in GKEYS schema (current user — has implicit READ/SELECT on own objects)
   for (let i = 0; i < seqNames.length; i++) {

@@ -24,6 +24,8 @@ export const api = {
 
   getGroups:    ()                 => req('GET',  '/groups'),
   runGrouping:  ()                 => req('POST', '/groups/run'),
+  answerGroup:  (id, answer)       => req('PUT',  `/groups/${id}/answer`, { answer }),
+  deleteAnswer: (id)               => req('DELETE',`/groups/${id}/answer`),
 
   getQrCode:    ()                 => `${BASE}/qrcode`,
   getAppUrl:    ()                 => req('GET',  '/app-url'),

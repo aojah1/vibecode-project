@@ -98,7 +98,7 @@ export default function GroupsPage() {
         ) : (
           <div className="space-y-3">
             {groups.map(g => (
-              <GroupCard key={g.GROUP_ID} group={g} />
+              <GroupCard key={g.GROUP_ID} group={g} isAdmin={user?.isAdmin} onGroupsChange={loadGroups} />
             ))}
           </div>
         )}
