@@ -95,6 +95,12 @@ export async function runGrouping() {
     clusters.get(root).push(i);
   }
 
+  // Load all existing groups once for duplicate title detection
+  const existingGroups = await query(
+    `SELECT GROUP_ID, GROUP_TITLE FROM ${S}.SKO_QUESTION_GROUPS`
+  );
+
+  const skipped = [];
   let newGroups = 0, grouped = 0;
 
   for (const [, members] of clusters) {
@@ -112,18 +118,24 @@ export async function runGrouping() {
     const groupSummary = `${members.length} related questions about ${terms.slice(0, 3).join(', ')}`;
     const totalLikes = members.reduce((s, i) => s + Number(questions[i].LIKE_COUNT || 0), 0);
 
-    // Collect distinct existing group IDs across this cluster
+    // Collect distinct existing group IDs already assigned to this cluster's questions
     const existingGroupIds = [...new Set(
       members.map(i => questions[i].GROUP_ID).filter(Boolean)
     )];
 
+    // Check for a group with the same title already in the DB (case-insensitive)
+    const titleMatch = existingGroups.find(
+      g => g.GROUP_TITLE?.toLowerCase() === groupTitle.toLowerCase() &&
+           !existingGroupIds.includes(String(g.GROUP_ID)) &&
+           !existingGroupIds.includes(Number(g.GROUP_ID))
+    );
+
     let groupId;
 
     if (existingGroupIds.length >= 1) {
-      // Keep the first (oldest) group; merge all others into it
+      // Questions already grouped — keep the first group, merge duplicates into it
       groupId = existingGroupIds[0];
 
-      // Delete duplicate groups and reassign their questions to groupId
       for (const dupId of existingGroupIds.slice(1)) {
         await execute(
           `UPDATE ${S}.SKO_QUESTIONS SET GROUP_ID = ${escNum(groupId)} WHERE GROUP_ID = ${escNum(dupId)}`
@@ -131,11 +143,24 @@ export async function runGrouping() {
         await execute(`DELETE FROM ${S}.SKO_QUESTION_GROUPS WHERE GROUP_ID = ${escNum(dupId)}`);
       }
 
-      // Update the surviving group with fresh title/stats
       await execute(
         `UPDATE ${S}.SKO_QUESTION_GROUPS
          SET TOTAL_LIKES = ${escNum(totalLikes)},
              GROUP_TITLE = ${escStr(groupTitle)},
+             GROUP_SUMMARY = ${escStr(groupSummary)},
+             UPDATED_AT = CURRENT_TIMESTAMP
+         WHERE GROUP_ID = ${escNum(groupId)}`
+      );
+    } else if (titleMatch) {
+      // A group with this same title already exists — reuse it, skip creation
+      const msg = `[Grouping] Skipping duplicate group "${groupTitle}" — already exists as ID ${titleMatch.GROUP_ID}`;
+      console.warn(msg);
+      skipped.push(groupTitle);
+      groupId = titleMatch.GROUP_ID;
+
+      await execute(
+        `UPDATE ${S}.SKO_QUESTION_GROUPS
+         SET TOTAL_LIKES = ${escNum(totalLikes)},
              GROUP_SUMMARY = ${escStr(groupSummary)},
              UPDATED_AT = CURRENT_TIMESTAMP
          WHERE GROUP_ID = ${escNum(groupId)}`
@@ -149,6 +174,8 @@ export async function runGrouping() {
       await execute('COMMIT');
       const row = await query(`SELECT MAX(GROUP_ID) AS GID FROM ${S}.SKO_QUESTION_GROUPS`);
       groupId = row[0]?.GID;
+      // Register new group in local list so subsequent clusters see it
+      existingGroups.push({ GROUP_ID: groupId, GROUP_TITLE: groupTitle });
       newGroups++;
     }
 
@@ -163,6 +190,6 @@ export async function runGrouping() {
     await execute('COMMIT');
   }
 
-  console.log(`[Grouping] ${grouped} questions in ${newGroups} new groups`);
-  return { grouped, newGroups };
+  console.log(`[Grouping] ${grouped} questions in ${newGroups} new groups${skipped.length ? `, ${skipped.length} duplicate(s) skipped` : ''}`);
+  return { grouped, newGroups, skipped };
 }
