@@ -5,6 +5,15 @@ import config from '../config.js';
 let mcpClient = null;
 let allTools = [];
 
+// Serialization queue — SQLcl runs one stdio process; concurrent callTool calls
+// interleave output and corrupt results. All calls go through this queue.
+let _queueTail = Promise.resolve();
+function enqueue(fn) {
+  const result = _queueTail.then(() => fn());
+  _queueTail = result.catch(() => {});
+  return result;
+}
+
 export async function initMcpClient() {
   console.log('[MCP] Spawning SQLcl MCP server…');
 
@@ -50,15 +59,19 @@ function extractText(result) {
 // SELECT queries — run-sql (read path, supports JSON_ARRAYAGG wrapping)
 async function runSql(sql) {
   if (!mcpClient) throw new Error('MCP client not initialized');
-  const result = await mcpClient.callTool({ name: 'run-sql', arguments: { sql } });
-  return extractText(result);
+  return enqueue(async () => {
+    const result = await mcpClient.callTool({ name: 'run-sql', arguments: { sql } });
+    return extractText(result);
+  });
 }
 
 // DML / DDL / COMMIT / ROLLBACK — run-sqlcl (write path)
 async function runSqlcl(command) {
   if (!mcpClient) throw new Error('MCP client not initialized');
-  const result = await mcpClient.callTool({ name: 'run-sqlcl', arguments: { sqlcl: command } });
-  return extractText(result);
+  return enqueue(async () => {
+    const result = await mcpClient.callTool({ name: 'run-sqlcl', arguments: { sqlcl: command } });
+    return extractText(result);
+  });
 }
 
 // SQLcl outputs: "COLUMN_NAME"\n"[{""KEY"":""VAL""}]"\n

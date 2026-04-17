@@ -68,9 +68,24 @@ async function seedUsers() {
   const rows = await query(`SELECT COUNT(*) AS CNT FROM ${S}.SKO_USERS`);
   if (Number(rows[0]?.CNT ?? 0) > 0) return;
 
-  await execute(`INSERT INTO ${S}.SKO_USERS (USER_ID,EMAIL,PASSWORD,IS_ADMIN) VALUES (SKO_USERS_SEQ.NEXTVAL,'admin@oracle.com','AskJay',1)`);
-  await execute(`INSERT INTO ${S}.SKO_USERS (USER_ID,EMAIL,PASSWORD) VALUES (SKO_USERS_SEQ.NEXTVAL,'test.user@oracle.com','AskJay')`);
-  await execute(`INSERT INTO ${S}.SKO_USERS (USER_ID,EMAIL,PASSWORD) VALUES (SKO_USERS_SEQ.NEXTVAL,'jane.doe@oracle.com','AskJay')`);
+  const seedList = [
+    { email: 'admin@oracle.com',        isAdmin: 1 },
+    { email: 'test.user@oracle.com',    isAdmin: 0 },
+    { email: 'jane.doe@oracle.com',     isAdmin: 0 },
+    { email: 'sarah.chen@oracle.com',   isAdmin: 0 },
+    { email: 'michael.torres@oracle.com', isAdmin: 0 },
+    { email: 'priya.sharma@oracle.com', isAdmin: 0 },
+    { email: 'david.kim@oracle.com',    isAdmin: 0 },
+    { email: 'emily.johnson@oracle.com',isAdmin: 0 },
+    { email: 'carlos.mendez@oracle.com',isAdmin: 0 },
+    { email: 'lisa.nguyen@oracle.com',  isAdmin: 0 },
+    { email: 'james.patel@oracle.com',  isAdmin: 0 },
+    { email: 'anna.kowalski@oracle.com',isAdmin: 0 },
+    { email: 'ryan.obrien@oracle.com',  isAdmin: 0 },
+  ];
+  for (const u of seedList) {
+    await execute(`INSERT INTO ${S}.SKO_USERS (USER_ID,EMAIL,PASSWORD,IS_ADMIN) VALUES (SKO_USERS_SEQ.NEXTVAL,'${u.email}','AskJay',${u.isAdmin})`);
+  }
   await execute('COMMIT');
   console.log('[DB] Seed users inserted');
 }

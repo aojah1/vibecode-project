@@ -10,12 +10,17 @@ export default function QuestionCard({ question, onLikeUpdate, onDelete }) {
   const likeCount = Number(question.LIKE_COUNT ?? question.likeCount ?? 0);
 
   const handleLike = async () => {
-    if (loading) return;
+    if (loading || liked) return;
     setLoading(true);
+    const qId = question.QUESTION_ID ?? question.questionId;
+    // Optimistic update
+    onLikeUpdate?.(qId, likeCount + 1, true);
     try {
-      const res = await api.likeQuestion(question.QUESTION_ID ?? question.questionId);
-      onLikeUpdate?.(question.QUESTION_ID ?? question.questionId, res.likeCount, res.liked);
+      const res = await api.likeQuestion(qId);
+      onLikeUpdate?.(qId, res.likeCount, res.liked);
     } catch (err) {
+      // Revert on error
+      onLikeUpdate?.(qId, likeCount, false);
       console.error(err);
     } finally {
       setLoading(false);
@@ -39,10 +44,11 @@ export default function QuestionCard({ question, onLikeUpdate, onDelete }) {
         {/* Like button */}
         <button
           onClick={handleLike}
-          disabled={loading}
+          disabled={loading || liked}
+          title={liked ? 'Already liked' : 'Like this question'}
           className={`flex flex-col items-center justify-center min-w-[52px] rounded-lg py-2 px-1 transition-colors touch-manipulation
             ${liked
-              ? 'bg-oracle-red text-white'
+              ? 'bg-oracle-red text-white cursor-default'
               : 'bg-oracle-gray text-oracle-muted hover:bg-red-50 hover:text-oracle-red'
             } ${loading ? 'opacity-50' : ''}`}
         >

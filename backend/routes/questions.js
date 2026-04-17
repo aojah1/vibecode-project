@@ -34,31 +34,23 @@ router.post('/', requireAuth, async (req, res) => {
     if (!questionText?.trim()) return res.status(400).json({ error: 'Question text required' });
     if (questionText.length > 2000) return res.status(400).json({ error: 'Question too long (max 2000 chars)' });
 
+    // Batch INSERT + UPDATE + COMMIT into one PL/SQL block = 1 round-trip instead of 4
     await execute(
-      `INSERT INTO ${S}.SKO_QUESTIONS (QUESTION_ID, USER_ID, QUESTION_TEXT)
-       VALUES (SKO_QUESTIONS_SEQ.NEXTVAL, ${escNum(req.session.userId)}, ${escStr(questionText.trim())})`
+      `BEGIN
+         INSERT INTO ${S}.SKO_QUESTIONS (QUESTION_ID, USER_ID, QUESTION_TEXT)
+           VALUES (SKO_QUESTIONS_SEQ.NEXTVAL, ${escNum(req.session.userId)}, ${escStr(questionText.trim())});
+         UPDATE ${S}.SKO_USERS SET QUESTIONS_ASKED = QUESTIONS_ASKED + 1
+           WHERE USER_ID = ${escNum(req.session.userId)};
+         COMMIT;
+       END;`
     );
-    await execute('COMMIT');
 
-    // Increment questions_asked count
-    await execute(
-      `UPDATE ${S}.SKO_USERS SET QUESTIONS_ASKED = QUESTIONS_ASKED + 1
-       WHERE USER_ID = ${escNum(req.session.userId)}`
-    );
-    await execute('COMMIT');
-
-    // Return the new question (get the highest ID for this user+text)
     const row = await queryOne(
       `SELECT q.QUESTION_ID, q.QUESTION_TEXT, q.LIKE_COUNT, q.GROUP_ID,
               q.CREATED_AT, q.USER_ID, u.EMAIL AS USER_EMAIL, 0 AS USER_LIKED
        FROM ${S}.SKO_QUESTIONS q
        JOIN ${S}.SKO_USERS u ON q.USER_ID = u.USER_ID
-       WHERE q.USER_ID = ${escNum(req.session.userId)}
-         AND q.QUESTION_TEXT = ${escStr(questionText.trim())}
-         AND q.QUESTION_ID = (
-           SELECT MAX(QUESTION_ID) FROM ${S}.SKO_QUESTIONS
-           WHERE USER_ID = ${escNum(req.session.userId)}
-         )`
+       WHERE q.QUESTION_ID = (SELECT MAX(QUESTION_ID) FROM ${S}.SKO_QUESTIONS WHERE USER_ID = ${escNum(req.session.userId)})`
     );
 
     // Emit real-time event (attached to res.locals by server.js)
@@ -84,19 +76,21 @@ router.post('/:id/like', requireAuth, async (req, res) => {
        WHERE USER_ID = ${userId} AND QUESTION_ID = ${questionId}`
     );
 
-    let liked;
     if (existing) {
-      // Unlike
-      await execute(`DELETE FROM ${S}.SKO_LIKES WHERE USER_ID = ${userId} AND QUESTION_ID = ${questionId}`);
-      await execute(`UPDATE ${S}.SKO_QUESTIONS SET LIKE_COUNT = GREATEST(LIKE_COUNT - 1, 0) WHERE QUESTION_ID = ${questionId}`);
-      liked = false;
-    } else {
-      // Like
-      await execute(`INSERT INTO ${S}.SKO_LIKES (LIKE_ID, USER_ID, QUESTION_ID) VALUES (SKO_LIKES_SEQ.NEXTVAL, ${userId}, ${questionId})`);
-      await execute(`UPDATE ${S}.SKO_QUESTIONS SET LIKE_COUNT = LIKE_COUNT + 1 WHERE QUESTION_ID = ${questionId}`);
-      liked = true;
+      // Already liked — return current state without any change
+      const current = await queryOne(
+        `SELECT QUESTION_ID, LIKE_COUNT FROM ${S}.SKO_QUESTIONS WHERE QUESTION_ID = ${questionId}`
+      );
+      return res.json({ liked: true, likeCount: Number(current?.LIKE_COUNT ?? 0) });
     }
-    await execute('COMMIT');
+
+    await execute(
+      `BEGIN
+         INSERT INTO ${S}.SKO_LIKES (LIKE_ID, USER_ID, QUESTION_ID) VALUES (SKO_LIKES_SEQ.NEXTVAL, ${userId}, ${questionId});
+         UPDATE ${S}.SKO_QUESTIONS SET LIKE_COUNT = LIKE_COUNT + 1 WHERE QUESTION_ID = ${questionId};
+         COMMIT;
+       END;`
+    );
 
     const updated = await queryOne(
       `SELECT QUESTION_ID, LIKE_COUNT FROM ${S}.SKO_QUESTIONS WHERE QUESTION_ID = ${questionId}`
@@ -106,12 +100,12 @@ router.post('/:id/like', requireAuth, async (req, res) => {
       res.locals.io.emit('like_update', {
         questionId: Number(req.params.id),
         likeCount: Number(updated?.LIKE_COUNT ?? 0),
-        liked,
+        liked: true,
         userId: req.session.userId,
       });
     }
 
-    res.json({ liked, likeCount: Number(updated?.LIKE_COUNT ?? 0) });
+    res.json({ liked: true, likeCount: Number(updated?.LIKE_COUNT ?? 0) });
   } catch (err) {
     console.error('[questions like]', err);
     res.status(500).json({ error: 'Failed to toggle like' });

@@ -31,11 +31,12 @@ export default function QuestionsPage() {
 
     socket.on('like_update', ({ questionId, likeCount, liked, userId }) => {
       setQuestions(prev =>
-        prev.map(q =>
-          String(q.QUESTION_ID) === String(questionId)
-            ? { ...q, LIKE_COUNT: likeCount }
-            : q
-        )
+        prev.map(q => {
+          if (String(q.QUESTION_ID) !== String(questionId)) return q;
+          // Only flip USER_LIKED for the socket event if it's our own action
+          // (our own like is handled optimistically via handleLikeUpdate already)
+          return { ...q, LIKE_COUNT: likeCount };
+        })
       );
     });
 
@@ -56,9 +57,13 @@ export default function QuestionsPage() {
     });
   };
 
-  const handleLikeUpdate = (questionId, likeCount) => {
+  const handleLikeUpdate = (questionId, likeCount, liked) => {
     setQuestions(prev =>
-      prev.map(q => String(q.QUESTION_ID) === String(questionId) ? { ...q, LIKE_COUNT: likeCount } : q)
+      prev.map(q =>
+        String(q.QUESTION_ID) === String(questionId)
+          ? { ...q, LIKE_COUNT: likeCount, USER_LIKED: liked ? 1 : 0 }
+          : q
+      )
     );
   };
 
