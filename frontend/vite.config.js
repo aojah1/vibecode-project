@@ -10,9 +10,9 @@ export default defineConfig({
       '7593-2600-1700-4eac-641f-00-100e.ngrok-free.app',
     ],
     proxy: {
-      '/api': 'http://localhost:3001',
-      '/mcp': 'http://localhost:3001',
-      '/socket.io': { target: 'http://localhost:3001', ws: true },
+      '/api': 'http://localhost:5001',
+      '/mcp': 'http://localhost:5001',
+      '/socket.io': { target: 'http://localhost:5001', ws: true },
     },
   },
 });
