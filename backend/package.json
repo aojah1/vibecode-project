@@ -9,6 +9,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "express": "^4.19.2",
     "express-session": "^1.17.3",
     "node-cron": "^3.0.3",

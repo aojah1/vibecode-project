@@ -1,5 +1,6 @@
 export default {
   port: 5001,
+  port_scan: 5173,
   sessionSecret: 'sko-oracle-2025-secret-xK9m',
   sqlclPath: '/Applications/sqlcl/bin/sql',
   connectionName: 'ASKJAYSKO_HIGH',

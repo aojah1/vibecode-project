@@ -118,7 +118,7 @@ app.use('/api/groups', groupsRouter);
 app.get('/api/qrcode', async (req, res) => {
   try {
     const host = getLocalIp();
-    const url = `http://${host}:${config.port}`;
+    const url = `http://${host}:${config.port_scan}`;
     const png = await qrcode.toBuffer(url, { width: 300, margin: 2 });
     res.set('Content-Type', 'image/png');
     res.send(png);
@@ -128,7 +128,7 @@ app.get('/api/qrcode', async (req, res) => {
 });
 
 app.get('/api/app-url', (req, res) => {
-  res.json({ url: `http://${getLocalIp()}:${config.port}` });
+  res.json({ url: `http://${getLocalIp()}:${config.port_scan}` });
 });
 
 // ─── Serve built frontend ─────────────────────────────────────────────────────
