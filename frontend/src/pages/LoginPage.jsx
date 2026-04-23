@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useAuth, OracleLogo } from '../App.jsx';
+import { useAuth } from '../App.jsx';
+import jayIcon from '/jay_icon.png';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -26,7 +27,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-oracle-navy flex flex-col">
       {/* Hero banner */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
-        <OracleLogo className="h-10 w-auto mb-6" />
+        <img src={jayIcon} alt="App icon" className="h-32 w-auto mb-6" />
 
         <div className="w-full max-w-sm">
           {/* Event title */}
